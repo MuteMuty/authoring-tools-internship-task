@@ -1,6 +1,6 @@
 export const config = {
   openWeather: {
-    apiKey: '1001b63d6c6552aa1cbb5cb72841ec0a',
+    apiKey: import.meta.env.VITE_OPENWEATHER_API_KEY,
     baseUrl: 'https://api.openweathermap.org',
     endpoints: {
       weather: '/data/2.5/weather',
@@ -8,7 +8,7 @@ export const config = {
     }
   },
   api: {
-    baseUrl: 'http://localhost:3000',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
     endpoints: {
       cities: '/api/cities',
       randomCities: '/api/random-cities'
