@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // Read cities data
-const citiesPath = path.join(__dirname, '../../assets/cities.json');
+const citiesPath = path.join(__dirname, '../assets/cities.json');
 const citiesData = JSON.parse(fs.readFileSync(citiesPath, 'utf-8'));
 
 // Helper function to parse city coordinates
@@ -44,6 +44,6 @@ app.get('/api/random-cities', (req, res) => {
   res.json(selectedCities);
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${port}`);
 }); 
