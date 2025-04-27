@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, watch } from 'vue';
+import { useGeolocation } from '@vueuse/core';
 import { useCityStore } from '@/stores/cityStore';
 import CityTable from './components/CityTable.vue';
 import { storeToRefs } from 'pinia';
@@ -8,19 +9,25 @@ const store = useCityStore();
 const { selectedCity } = storeToRefs(store);
 const { setUserLocation } = store;
 
-onMounted(async () => {
-  // Try to get user's location
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        await setUserLocation(position.coords.latitude, position.coords.longitude);
-      },
-      (error) => {
-        console.error('Error getting location:', error);
-        store.fetchCities();
-      }
-    );
-  } else {
+const { coords, error, isSupported } = useGeolocation();
+
+watch(coords, async (newCoords, oldCoords) => {
+  if (newCoords && (!oldCoords || 
+      newCoords.latitude !== oldCoords.latitude || 
+      newCoords.longitude !== oldCoords.longitude)) {
+    await setUserLocation(newCoords.latitude, newCoords.longitude);
+  }
+});
+
+watch(error, (newError) => {
+  if (newError) {
+    console.error('Error getting location:', newError);
+    store.fetchCities();
+  }
+});
+
+onMounted(() => {
+  if (!isSupported.value) {
     console.error('Geolocation is not supported by this browser.');
     store.fetchCities();
   }
@@ -57,11 +64,5 @@ header {
 h1 {
   color: var(--color-heading);
   margin-bottom: 1rem;
-}
-
-@media (max-width: 600px) {
-  .app {
-    padding: 1rem;
-  }
 }
 </style>

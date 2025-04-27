@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
-import axios from 'axios';
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
+import { useFetch, useAsyncState } from '@vueuse/core';
 import { config } from '@/config';
 
 interface City {
@@ -56,107 +56,105 @@ export const useCityStore = defineStore('city', () => {
     lat2: number,
     lon2: number
   ): number => {
-    // Earth's radius in kilometers
     const R = 6371;
+    const toRadians = (degrees: number): number => degrees * (Math.PI / 180);
   
-    // Convert degrees to radians
     const dLat = toRadians(lat2 - lat1);
     const dLon = toRadians(lon2 - lon1);
   
     const radLat1 = toRadians(lat1);
     const radLat2 = toRadians(lat2);
   
-    // Haversine formula
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(radLat1) * Math.cos(radLat2);
     
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     
-    // Distance in kilometers
     return R * c;
   };
 
-  const toRadians = (degrees: number): number => {
-    return degrees * (Math.PI / 180);
-  };
-
   const getWeatherData = async (city: City) => {
-    try {
-      const response = await axios.get(
-        `${config.openWeather.baseUrl}${config.openWeather.endpoints.weather}?lat=${city.lat}&lon=${city.lng}&appid=${config.openWeather.apiKey}&units=metric`
-      );
-      
-      return {
-        temperature: response.data.main.temp,
-        conditions: response.data.weather[0].main,
-        description: response.data.weather[0].description,
-        icon: response.data.weather[0].icon
-      };
-    } catch (err) {
-      console.error('Failed to fetch weather data:', err);
+    const { data, error } = await useFetch(
+      `${config.openWeather.baseUrl}${config.openWeather.endpoints.weather}?lat=${city.lat}&lon=${city.lng}&appid=${config.openWeather.apiKey}&units=metric`
+    ).json();
+
+    if (error.value) {
+      console.error('Failed to fetch weather data:', error.value);
       return null;
     }
+
+    return {
+      temperature: data.value.main.temp,
+      conditions: data.value.weather[0].main,
+      description: data.value.weather[0].description,
+      icon: data.value.weather[0].icon
+    };
   };
 
   const getLocationName = async (lat: number, lng: number) => {
-    try {
-      // First get location info from OpenWeather
-      const response = await axios.get(
-        `${config.openWeather.baseUrl}${config.openWeather.endpoints.geocoding}?lat=${lat}&lon=${lng}&limit=1&appid=${config.openWeather.apiKey}`
-      );
-      
-      if (response.data && response.data.length > 0) {
-        const location = response.data[0];
-        
-        // Then get country name from our backend
-        const countryResponse = await axios.get(
-          `${config.api.baseUrl}${config.api.endpoints.cities}?country=${location.country}`
-        );
-        
-        const countryName = countryResponse.data?.[0]?.country_name || location.country;
-        
-        return {
-          name: location.name,
-          country: location.country,
-          country_name: countryName
-        };
-      }
-      return null;
-    } catch (err) {
-      console.error('Failed to fetch location name:', err);
+    const { data: locationData, error: locationError } = await useFetch(
+      `${config.openWeather.baseUrl}${config.openWeather.endpoints.geocoding}?lat=${lat}&lon=${lng}&limit=1&appid=${config.openWeather.apiKey}`
+    ).json();
+
+    if (locationError.value || !locationData.value?.[0]) {
+      console.error('Failed to fetch location name:', locationError.value);
       return null;
     }
+
+    const location = locationData.value[0];
+    
+    const { data: countryData, error: countryError } = await useFetch(
+      `${config.api.baseUrl}${config.api.endpoints.cities}?country=${location.country}`
+    ).json();
+
+    if (countryError.value) {
+      console.error('Failed to fetch country name:', countryError.value);
+      return null;
+    }
+
+    const countryName = countryData.value?.[0]?.country_name || location.country;
+    
+    return {
+      name: location.name,
+      country: location.country,
+      country_name: countryName
+    };
   };
 
   const fetchCities = async () => {
     loading.value = true;
     error.value = null;
-    try {
-      const response = await axios.get(`${config.api.baseUrl}${config.api.endpoints.randomCities}`);
-      const citiesWithWeather = await Promise.all(
-        response.data.map(async (city: City) => {
-          const weather = await getWeatherData(city);
-          return { ...city, weather };
-        })
-      );
-      
-      // If we have a selected city (user location), add it to the beginning of the list
-      if (selectedCity.value) {
-        cities.value = [selectedCity.value, ...citiesWithWeather];
-      } else {
-        cities.value = citiesWithWeather;
-      }
-      
-      if (selectedCity.value) {
-        updateDistances(selectedCity.value);
-      }
-    } catch (err) {
+
+    const { data, error: fetchError } = await useFetch(
+      `${config.api.baseUrl}${config.api.endpoints.randomCities}`
+    ).json();
+
+    if (fetchError.value) {
       error.value = 'Failed to fetch cities';
-      console.error(err);
-    } finally {
+      console.error(fetchError.value);
       loading.value = false;
+      return;
     }
+
+    const citiesWithWeather = await Promise.all(
+      data.value.map(async (city: City) => {
+        const weather = await getWeatherData(city);
+        return { ...city, weather };
+      })
+    );
+    
+    if (selectedCity.value) {
+      cities.value = [selectedCity.value, ...citiesWithWeather];
+    } else {
+      cities.value = citiesWithWeather;
+    }
+    
+    if (selectedCity.value) {
+      updateDistances(selectedCity.value);
+    }
+
+    loading.value = false;
   };
 
   const updateDistances = (originCity: City) => {
