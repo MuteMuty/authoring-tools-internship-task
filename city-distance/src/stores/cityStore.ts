@@ -2,77 +2,15 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { useFetch, useAsyncState } from '@vueuse/core';
 import { config } from '@/config';
-
-interface City {
-  name: string;
-  country: string;
-  country_name: string;
-  altnames?: string;
-  lat: number;
-  lng: number;
-  distance?: number;
-  distanceAI?: number;
-  weather?: {
-    temperature: number;
-    conditions: string;
-    description: string;
-    icon: string;
-  };
-}
+import type { City } from '@/types/city';
+import { useDistance } from '@/composables/useDistance';
 
 export const useCityStore = defineStore('city', () => {
   const cities = ref<City[]>([]);
   const selectedCity = ref<City | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
-
-  // Haversine formula for distance calculation
-  const calculateDistance = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number => {
-    const R = 6371;
-  
-    const dlat1 = lat1 * Math.PI / 180;
-    const dlat2 = lat2 * Math.PI / 180;
-    const avg_dlat = (lat2 - lat1) * Math.PI / 180;
-    const avg_dlon = (lon2 - lon1) * Math.PI / 180;
-  
-    const a = Math.sin(avg_dlat / 2) * Math.sin(avg_dlat / 2) +
-              Math.cos(dlat1) * Math.cos(dlat2) *
-              (Math.sin(avg_dlon / 2) * Math.sin(avg_dlon / 2));
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  
-    return R * c;
-  };
-
-  // AI-generated Haversine formula for distance calculation
-  const calculateDistanceAI = (
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number
-  ): number => {
-    const R = 6371;
-    const toRadians = (degrees: number): number => degrees * (Math.PI / 180);
-  
-    const dLat = toRadians(lat2 - lat1);
-    const dLon = toRadians(lon2 - lon1);
-  
-    const radLat1 = toRadians(lat1);
-    const radLat2 = toRadians(lat2);
-  
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(radLat1) * Math.cos(radLat2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    
-    return R * c;
-  };
+  const { calculateDistance, calculateDistanceAI } = useDistance();
 
   const getWeatherData = async (city: City) => {
     const { data, error } = await useFetch(

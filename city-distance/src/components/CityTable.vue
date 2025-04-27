@@ -6,35 +6,35 @@
     <div class="filter-controls" v-if="!loading && !error">
       <div class="filter-group">
         <label for="filter-type">Filter by:</label>
-        <select id="filter-type" v-model="filterType" @change="resetFilters">
+        <select id="filter-type" v-model="filterStore.filterType" @change="filterStore.resetFilters">
           <option value="none">None</option>
           <option value="temp">Temperature</option>
           <option value="condition">Weather Condition</option>
         </select>
       </div>
 
-      <div class="filter-group" v-if="filterType === 'temp'">
+      <div class="filter-group" v-if="filterStore.filterType === 'temp'">
         <label for="temp-operator">Temperature:</label>
-        <select id="temp-operator" v-model="tempOperator">
+        <select id="temp-operator" v-model="filterStore.tempOperator">
           <option value="above">Above</option>
           <option value="below">Below</option>
         </select>
         <input 
           type="range" 
-          v-model="tempValue" 
+          v-model="filterStore.tempValue" 
           :min="-20" 
           :max="40" 
           step="1"
           class="temp-slider"
         />
-        <span class="temp-value">{{ tempValue }}°C</span>
+        <span class="temp-value">{{ filterStore.tempValue }}°C</span>
       </div>
 
-      <div class="filter-group" v-if="filterType === 'condition'">
+      <div class="filter-group" v-if="filterStore.filterType === 'condition'">
         <label for="condition">Condition:</label>
-        <select id="condition" v-model="selectedCondition">
+        <select id="condition" v-model="filterStore.selectedCondition">
           <option value="">Select condition</option>
-          <option v-for="condition in uniqueConditions" :key="condition" :value="condition">
+          <option v-for="condition in filterStore.uniqueConditions" :key="condition" :value="condition">
             {{ condition }}
           </option>
         </select>
@@ -56,7 +56,7 @@
         </thead>
         <tbody>
           <tr 
-            v-for="city in filteredCities" 
+            v-for="city in filterStore.filteredCities" 
             :key="city.name"
             :class="{ 'selected': city === selectedCity }"
             @click="selectCity(city)"
@@ -92,56 +92,14 @@
 
 <script setup lang="ts">
 import { useCityStore } from '@/stores/cityStore';
+import { useFilterStore } from '@/stores/filterStore';
 import { storeToRefs } from 'pinia';
-import { computed, ref } from 'vue';
 
-const store = useCityStore();
-const { cities, selectedCity, loading, error } = storeToRefs(store);
-const { selectCity } = store;
+const cityStore = useCityStore();
+const { selectedCity, loading, error } = storeToRefs(cityStore);
+const { selectCity } = cityStore;
 
-const filterType = ref<'none' | 'temp' | 'condition'>('none');
-const tempOperator = ref<'above' | 'below'>('above');
-const tempValue = ref(0);
-const selectedCondition = ref('');
-
-const uniqueConditions = computed(() => {
-  const conditions = new Set<string>();
-  cities.value.forEach(city => {
-    if (city.weather?.conditions) {
-      conditions.add(city.weather.conditions);
-    }
-  });
-  return Array.from(conditions).sort();
-});
-
-const filteredCities = computed(() => {
-  if (filterType.value === 'none') {
-    return cities.value;
-  }
-
-  return cities.value.filter(city => {
-    if (!city.weather) return false;
-
-    if (filterType.value === 'temp') {
-      const cityTemp = city.weather.temperature;
-      return tempOperator.value === 'above' 
-        ? cityTemp > tempValue.value 
-        : cityTemp < tempValue.value;
-    }
-
-    if (filterType.value === 'condition') {
-      if (!selectedCondition.value) return true;
-      return city.weather.conditions === selectedCondition.value;
-    }
-
-    return true;
-  });
-});
-
-const resetFilters = () => {
-  tempValue.value = 0;
-  selectedCondition.value = '';
-};
+const filterStore = useFilterStore();
 </script>
 
 <style scoped>
