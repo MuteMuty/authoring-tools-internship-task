@@ -10,6 +10,7 @@
           <th class="hide-on-mobile">Country</th>
           <th class="hide-on-mobile">Coordinates</th>
           <th>Distance (km)</th>
+          <th class="hide-on-mobile">Distance AI (km)</th>
           <th class="hide-on-mobile">Weather</th>
         </tr>
       </thead>
@@ -26,6 +27,7 @@
             {{ city.lat.toFixed(2) }}, {{ city.lng.toFixed(2) }}
           </td>
           <td>{{ city.distance?.toFixed(2) || 'N/A' }}</td>
+          <td class="hide-on-mobile">{{ city.distanceAI?.toFixed(2) || 'N/A' }}</td>
           <td class="hide-on-mobile">
             <div v-if="city.weather" class="weather-info">
               <img 

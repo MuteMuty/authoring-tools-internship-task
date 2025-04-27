@@ -11,6 +11,7 @@ interface City {
   lat: number;
   lng: number;
   distance?: number;
+  distanceAI?: number;
   weather?: {
     temperature: number;
     conditions: string;
@@ -26,16 +27,58 @@ export const useCityStore = defineStore('city', () => {
   const error = ref<string | null>(null);
 
   // Haversine formula for distance calculation
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    const R = 6371;
+  
+    const dlat1 = lat1 * Math.PI / 180;
+    const dlat2 = lat2 * Math.PI / 180;
+    const avg_dlat = (lat2 - lat1) * Math.PI / 180;
+    const avg_dlon = (lon2 - lon1) * Math.PI / 180;
+  
+    const a = Math.sin(avg_dlat / 2) * Math.sin(avg_dlat / 2) +
+              Math.cos(dlat1) * Math.cos(dlat2) *
+              (Math.sin(avg_dlon / 2) * Math.sin(avg_dlon / 2));
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
     return R * c;
+  };
+
+  // AI-generated Haversine formula for distance calculation
+  const calculateDistanceAI = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    // Earth's radius in kilometers
+    const R = 6371;
+  
+    // Convert degrees to radians
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+  
+    const radLat1 = toRadians(lat1);
+    const radLat2 = toRadians(lat2);
+  
+    // Haversine formula
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(radLat1) * Math.cos(radLat2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    
+    // Distance in kilometers
+    return R * c;
+  };
+
+  const toRadians = (degrees: number): number => {
+    return degrees * (Math.PI / 180);
   };
 
   const getWeatherData = async (city: City) => {
@@ -103,6 +146,12 @@ export const useCityStore = defineStore('city', () => {
     cities.value = cities.value.map(city => ({
       ...city,
       distance: calculateDistance(
+        originCity.lat,
+        originCity.lng,
+        city.lat,
+        city.lng
+      ),
+      distanceAI: calculateDistanceAI(
         originCity.lat,
         originCity.lng,
         city.lat,
