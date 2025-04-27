@@ -20,10 +20,21 @@ const parseCityCoordinates = (city: any) => ({
   lng: parseFloat(city.lng)
 });
 
-// Endpoint to get all cities
+// Endpoint to get all cities or filter by country
 app.get('/api/cities', (req, res) => {
-  const parsedCities = citiesData.map(parseCityCoordinates);
-  res.json(parsedCities);
+  const { country } = req.query;
+  
+  if (country) {
+    const cityWithCountry = citiesData.find((city: any) => city.country === country);
+    if (cityWithCountry) {
+      res.json([parseCityCoordinates(cityWithCountry)]);
+    } else {
+      res.json([]);
+    }
+  } else {
+    const parsedCities = citiesData.map(parseCityCoordinates);
+    res.json(parsedCities);
+  }
 });
 
 // Endpoint to get random cities (25 unique countries)

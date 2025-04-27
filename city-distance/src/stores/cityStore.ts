@@ -101,15 +101,25 @@ export const useCityStore = defineStore('city', () => {
 
   const getLocationName = async (lat: number, lng: number) => {
     try {
+      // First get location info from OpenWeather
       const response = await axios.get(
         `${config.openWeather.baseUrl}${config.openWeather.endpoints.geocoding}?lat=${lat}&lon=${lng}&limit=1&appid=${config.openWeather.apiKey}`
       );
+      
       if (response.data && response.data.length > 0) {
         const location = response.data[0];
+        
+        // Then get country name from our backend
+        const countryResponse = await axios.get(
+          `${config.api.baseUrl}${config.api.endpoints.cities}?country=${location.country}`
+        );
+        
+        const countryName = countryResponse.data?.[0]?.country_name || location.country;
+        
         return {
           name: location.name,
           country: location.country,
-          country_name: location.country
+          country_name: countryName
         };
       }
       return null;
@@ -130,7 +140,14 @@ export const useCityStore = defineStore('city', () => {
           return { ...city, weather };
         })
       );
-      cities.value = citiesWithWeather;
+      
+      // If we have a selected city (user location), add it to the beginning of the list
+      if (selectedCity.value) {
+        cities.value = [selectedCity.value, ...citiesWithWeather];
+      } else {
+        cities.value = citiesWithWeather;
+      }
+      
       if (selectedCity.value) {
         updateDistances(selectedCity.value);
       }
@@ -167,14 +184,23 @@ export const useCityStore = defineStore('city', () => {
 
   const setUserLocation = async (lat: number, lng: number) => {
     const locationInfo = await getLocationName(lat, lng);
-    const userLocation = {
+    const weatherData = await getWeatherData({ lat, lng } as City);
+    const location: City = {
       name: locationInfo?.name || 'Your Location',
       country: locationInfo?.country || 'CURRENT',
       country_name: locationInfo?.country_name || 'Current Location',
       lat,
-      lng
+      lng,
+      weather: weatherData ? {
+        temperature: Number(weatherData.temperature),
+        conditions: String(weatherData.conditions),
+        description: String(weatherData.description),
+        icon: String(weatherData.icon)
+      } : undefined,
+      distance: 0,
+      distanceAI: 0
     };
-    selectCity(userLocation);
+    selectCity(location);
     await fetchCities();
   };
 

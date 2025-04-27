@@ -3,10 +3,11 @@
     <div v-if="loading" class="loading">Loading cities...</div>
     <div v-if="error" class="error">{{ error }}</div>
     
-    <table class="city-table" v-if="!loading && !error">
-      <thead>
-        <tr>
-          <th>City Name</th>
+    <div class="table-wrapper" v-if="!loading && !error">
+      <table class="city-table">
+        <thead>
+          <tr>
+            <th>City Name</th>
           <th class="hide-on-mobile">Country</th>
           <th class="hide-on-mobile">Coordinates</th>
           <th>Distance (km)</th>
@@ -46,6 +47,7 @@
       </tbody>
     </table>
   </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -60,8 +62,15 @@ const { selectCity } = store;
 <style scoped>
 .city-table-container {
   width: 100%;
-  overflow-x: auto;
   margin: 1rem 0;
+}
+
+.table-wrapper {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 500px;
+  overflow-y: auto;
 }
 
 .city-table {
@@ -82,6 +91,9 @@ const { selectCity } = store;
   background-color: var(--color-background-soft);
   font-weight: 600;
   color: var(--color-text);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .city-table tr:hover {
