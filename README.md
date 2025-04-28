@@ -1,108 +1,153 @@
-# 🌍 Frontend/Full Stack Intern Task
+# 🌍 City Distance
 
-Hey there! 👋
+A web application that displays the distance from the user's location (or a selected city) to 25 randomly selected cities across the globe. Built with Vue 3, TypeScript, and Pinia, featuring real-time weather data and responsive design.
 
-Thanks for applying to our internship program! This is a small technical task that will be part of the **technical interview** process.
+## 🌐 Try It Live!
 
-You’ll build a mini app, submit it via a **GitHub pull request**, and we’ll review it together during a **collaborative code review session** — just like we do on the team. We're not expecting a perfect solution — we're more interested in how you **think**, **learn**, and **communicate your decisions**.
+A working implementation is available at: https://city-distance-2ggsn.ondigitalocean.app/
 
-If something isn’t finished or you’ve made trade-offs, that’s totally fine — just explain what you would do next or how you approached the problem.
+![City Distance App Screenshot](screenshots/app.png)
 
----
+## ✨ Features
 
-## 🧠 Task Overview
+- ✅ **Automatic Location Detection** - Uses browser geolocation to set the initial reference point
+- ✅ **Interactive City Selection** - Click any city to set it as the new reference point
+- ✅ **Dual Distance Calculation** - Shows distances using both custom and AI-generated Haversine formulas
+- ✅ **Real-Time Weather Data** - Displays current weather conditions for each city
+- ✅ **Responsive Table** - Adapts to different screen sizes with smart column hiding
+- ✅ **Weather Filtering** - Filter cities by temperature and weather conditions
 
-Build a small web app that loads a list of cities from a local server, calculates the distance from the user, and displays everything in a responsive table.
-When the user clicks on a city (a row), the app should recalculate distances from that city to the others.
+## 🛠 Tech Stack
 
----
+- **Frontend**: Vue 3 (Composition API) + TypeScript
+- **Backend**: Express.js + TypeScript
+- **State Management**: Pinia
+- **Styling**: CSS
+- **API Integration**: OpenWeather API for weather data
 
-## ✅ Requirements
+## 📐 Distance Calculation
 
-### 1. Load City List
-- Your app should **fetch a list of city names** from a locally spawned server that serves the list of cities [`assets/cities.json`](assets/cities.json).
-  Use a public available *json server* of your choice. You can also use a service that hosts the file. 
-- From the response, randomly select **25 countries**, and then randomly select **1 city per country**.
-- Use these 25 cities as the source list for the rest of the task.
+The app implements two versions of the Haversine formula to calculate distances between cities:
 
-### 2. Get Current Location
-- Use the **browser’s Geolocation API** to get the user's current location.
+1. **Custom Implementation**:
+```typescript
+export const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const toRad = (degrees: number): number => degrees * (Math.PI / 180);
+  const R: number = 6371;
 
-### 3. Calculate Distance
-- Add **two distance columns** to your table:
-  - `Distance (Your Formula)`: Calculate the distance from the user to each city using **any formula you like** (e.g., Haversine). Be sure to provide your own implementation.
-    - 📌 Be sure to **briefly explain your formula** in the code or README.
-  - `Distance (AI-Generated)`: Recreate the same logic using an **AI-generated implementation** (e.g., using ChatGPT, GitHub Copilot, etc.).
-    - Note **how you used AI** (e.g., did it generate the code? help troubleshoot? suggest structure?).
+  const dLat: number = toRad(lat2 - lat1);
+  const dLon: number = toRad(lon2 - lon1);
+  const radLat1: number = toRad(lat1);
+  const radLat2: number = toRad(lat2);
 
-> 💡 We encourage and value the smart use of AI tools in our workflow — show us how you applied them.
+  const hav: number = Math.pow(Math.sin(dLat / 2), 2) +
+            Math.cos(radLat1) * Math.cos(radLat2) *
+            Math.pow(Math.sin(dLon / 2), 2);
+  
+  const distance: number = 2 * R * Math.asin(Math.sqrt(hav));
 
----
+  return distance;
+};
+```
 
-### 4. Display in a Responsive Table
-- Present all results in a styled, scrollable table.
-- The table should include the following columns:
-  - City Name
-  - Country Name
-  - Country Code
-  - Coordinates
-  - Distance (Your Formula)
-  - Distance (AI-Generated)
-- Make the table **responsive**:
-  - On very small screens (**< 200px**), show **only**:
-    - City Name
-    - Distance (Your Formula)
+2. **AI-Generated Implementation**:
+```typescript
+export const calculateDistanceAI = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
+  const R: number = 6371;
+  const toRadians = (degrees: number): number => degrees * (Math.PI / 180);
 
-### 5. UI Interaction
-- When the user clicks on a city name, recalculate distances from the selected city to all the others (instead of the current location).
+  const dLat: number = toRadians(lat2 - lat1);
+  const dLon: number = toRadians(lon2 - lon1);
 
----
+  const radLat1: number = toRadians(lat1);
+  const radLat2: number = toRadians(lat2);
 
-## 🎯 Optional Fun Challenge
+  const a: number =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(radLat1) * Math.cos(radLat2);
+  
+  const c: number = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
+  return R * c;
+};
+```
 
-If you're up for a bit of fun, try adding one of the following features:
+Both implementations use the Haversine formula to calculate the great-circle distance between two points on a sphere using their latitudes and longitudes. The Earth's radius (6371 km) is used as the sphere's radius.
 
-- **Custom Data Column** 📊: Add a column of your choice to enhance the city data — examples include:
-  - Current weather
-  - Temperature
-  - Wind speed
-  - Population
-  - Local time
-  - Map
-  - Anything else fun or informative
+## 🚀 Getting Started
 
-  Then, provide a **UI toggle** (e.g., switch or dropdown) that lets users filter the table to only show entries that match criteria based on this custom column.
-  - For example: cities with temperature above 20°C, population below 1 million, or particularly windy places.
+### Option 1: Using Docker Compose (Recommended)
 
-This is totally optional — just a chance to show off your creativity and have fun with the task!
+1. Clone the repository
 
----
+2. Move to frontend and create a `.env` file with your OpenWeather API key:
+```bash
+cd city-distance
+```
+```env
+VITE_OPENWEATHER_API_KEY=your_api_key_here
+VITE_API_BASE_URL=http://localhost:3000
+```
 
-## 🛠️ Tech Stack
+3. Start the services in the root:
+```bash
+docker-compose up
+```
 
-You can use **any tech stack** you're comfortable with, and a **UI framework of your choice**.
+The application will be available at:
+- Frontend: http://localhost:80
+- Backend: http://localhost:3000
 
-> 💡 **Bonus Points**  
-> We use **Vue 3 (Composition API)** with **Pinia** for state management and **TypeScript**.  
-> Using this stack will earn you extra credit during the review.
+### Option 2: Manual way
 
----
+1. Clone the repository
+2. Start the backend server:
+```bash
+cd server
+npm install
+npm start
+```
 
-## 🚀 How to Submit
+3. In a separate terminal move to frontend and create a `.env` file with your OpenWeather API key:
+```bash
+cd city-distance
+```
+```env
+VITE_OPENWEATHER_API_KEY=your_api_key_here
+VITE_API_BASE_URL=http://localhost:3000
+```
 
-- Clone this repository and push to a brand new repository before you start your task.
-- When you're happy with the result submit a **pull request** and send us the link to the repository.
-- In your README or comments, please include:
-  - Instructions for running the app (especially if backend or PHP is involved)
-  - A short explanation of your distance formula
-  - How you used AI tools (if applicable)
-  - Any assumptions or trade-offs you made
+4. Start the development server:
+```bash
+npm install
+npm run dev
+```
 
----
+The application will be available at:
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3000
 
-## 💬 Questions?
+## 🤖 Use of AI
 
-If anything is unclear, feel free to reach out to `markopangerceltra` — we're happy to help.
+AI tools were used in the following ways:
+- Generated an alternative implementation of the Haversine formula
+- Assisted in code organization and TypeScript type definitions
+- Helped with responsive design implementation
+- Provided suggestions for state management structure
 
-We’re looking forward to seeing your work — good luck and have fun!
+## 📱 Responsive Design
 
+The table adapts to different screen sizes:
+- **Desktop**: Shows all columns
+- **Medium screens**: Hides country name, country code, and coordinates
+- **Mobile**: Shows only city name, distance, and weather

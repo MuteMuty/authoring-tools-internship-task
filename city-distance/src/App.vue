@@ -22,6 +22,7 @@ watch(coords, async (newCoords, oldCoords) => {
 watch(error, (newError) => {
   if (newError) {
     console.error('Error getting location:', newError);
+    // fetch only random cities without the geolocation one
     store.fetchCities();
   }
 });
@@ -29,6 +30,7 @@ watch(error, (newError) => {
 onMounted(() => {
   if (!isSupported.value) {
     console.error('Geolocation is not supported by this browser.');
+    // fetch only random cities without the geolocation one
     store.fetchCities();
   }
 });
@@ -49,7 +51,7 @@ onMounted(() => {
   </div>
 </template>
 
-<style>
+<style scoped>
 .app {
   max-width: 1200px;
   margin: 0 auto;

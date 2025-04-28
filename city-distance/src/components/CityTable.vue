@@ -3,43 +3,7 @@
     <div v-if="loading" class="loading">Loading cities...</div>
     <div v-if="error" class="error">{{ error }}</div>
     
-    <div class="filter-controls" v-if="!loading && !error">
-      <div class="filter-group">
-        <label for="filter-type">Filter by:</label>
-        <select id="filter-type" v-model="filterStore.filterType" @change="filterStore.resetFilters">
-          <option value="none">None</option>
-          <option value="temp">Temperature</option>
-          <option value="condition">Weather Condition</option>
-        </select>
-      </div>
-
-      <div class="filter-group" v-if="filterStore.filterType === 'temp'">
-        <label for="temp-operator">Temperature:</label>
-        <select id="temp-operator" v-model="filterStore.tempOperator">
-          <option value="above">Above</option>
-          <option value="below">Below</option>
-        </select>
-        <input 
-          type="range" 
-          v-model="filterStore.tempValue" 
-          :min="-20" 
-          :max="40" 
-          step="1"
-          class="temp-slider"
-        />
-        <span class="temp-value">{{ filterStore.tempValue }}°C</span>
-      </div>
-
-      <div class="filter-group" v-if="filterStore.filterType === 'condition'">
-        <label for="condition">Condition:</label>
-        <select id="condition" v-model="filterStore.selectedCondition">
-          <option value="">Select condition</option>
-          <option v-for="condition in filterStore.uniqueConditions" :key="condition" :value="condition">
-            {{ condition }}
-          </option>
-        </select>
-      </div>
-    </div>
+    <CityFilters v-if="!loading && !error" />
     
     <div class="table-wrapper" v-if="!loading && !error">
       <table class="city-table">
@@ -56,8 +20,8 @@
         </thead>
         <tbody>
           <tr 
-            v-for="city in filterStore.filteredCities" 
-            :key="city.name"
+            v-for="(city, index) in filterStore.filteredCities" 
+            :key="index"
             :class="{ 'selected': city === selectedCity }"
             @click="selectCity(city)"
           >
@@ -70,18 +34,7 @@
             <td>{{ city.distance?.toFixed(2) || 'N/A' }}</td>
             <td class="hide-on-mobile">{{ city.distanceAI?.toFixed(2) || 'N/A' }}</td>
             <td class="hide-on-mobile">
-              <div v-if="city.weather" class="weather-info">
-                <img 
-                  :src="`https://openweathermap.org/img/wn/${city.weather.icon}@2x.png`" 
-                  :alt="city.weather.description"
-                  class="weather-icon"
-                />
-                <div class="weather-details">
-                  <div>{{ city.weather.temperature }}°C</div>
-                  <div>{{ city.weather.description }}</div>
-                </div>
-              </div>
-              <div v-else>-</div>
+              <WeatherDisplay :weather="city.weather" />
             </td>
           </tr>
         </tbody>
@@ -94,6 +47,8 @@
 import { useCityStore } from '@/stores/cityStore';
 import { useFilterStore } from '@/stores/filterStore';
 import { storeToRefs } from 'pinia';
+import CityFilters from './CityFilters.vue';
+import WeatherDisplay from './WeatherDisplay.vue';
 
 const cityStore = useCityStore();
 const { selectedCity, loading, error } = storeToRefs(cityStore);
@@ -102,157 +57,142 @@ const { selectCity } = cityStore;
 const filterStore = useFilterStore();
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .city-table-container {
   width: 100%;
   margin: 1rem 0;
-}
 
-.filter-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
-  background-color: var(--color-background-soft);
-  border-radius: 8px;
-}
+  .table-wrapper {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 500px;
+    overflow-y: auto;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: var(--color-background);
 
-.filter-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+    /* Custom scrollbar styling */
+    &::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
 
-.filter-group label {
-  font-weight: 500;
-  white-space: nowrap;
-}
+    &::-webkit-scrollbar-track {
+      background: var(--color-background-soft);
+      border-radius: 4px;
+    }
 
-select {
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background-color: var(--color-background);
-  color: var(--color-text);
-}
+    &::-webkit-scrollbar-thumb {
+      background: var(--color-border);
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
 
-.temp-slider {
-  width: 150px;
-  margin: 0 0.5rem;
-}
+      &:hover {
+        background: var(--color-primary);
+      }
+    }
 
-.temp-value {
-  min-width: 3rem;
-  text-align: center;
-}
+    .city-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin: 0 auto;
+      color: var(--color-text);
+      font-size: 0.875rem;
 
-.table-wrapper {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
-  max-height: 500px;
-  overflow-y: auto;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
+      th, td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--color-border);
+        transition: background-color 0.2s ease;
+      }
 
-.city-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0 auto;
-  color: var(--color-text);
-}
+      th {
+        background-color: var(--color-background-soft);
+        font-weight: 600;
+        color: var(--color-text);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        white-space: nowrap;
+        border-bottom: 2px solid var(--color-border);
+      }
 
-.city-table th,
-.city-table td {
-  padding: 0.5rem;
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
+      tr {
+        &:hover {
+          background-color: var(--color-background-soft);
+          cursor: pointer;
+        }
 
-.city-table th {
-  background-color: var(--color-background-soft);
-  font-weight: 600;
-  color: var(--color-text);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
+        &.selected {
+          background-color: var(--color-primary);
+          color: white;
 
-.city-table tr:hover {
-  background-color: var(--color-background-soft);
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
+          &:hover {
+            background-color: var(--color-primary-dark);
+          }
+        }
 
-.city-table tr.selected {
-  background-color: var(--color-primary);
-  color: white;
-}
+        &:last-child td {
+          border-bottom: none;
+        }
+      }
 
-.city-table tr.selected:hover {
-  background-color: var(--color-primary-dark);
-}
+      td {
+        &:first-child {
+          border-left: 1px solid var(--color-border);
+        }
 
-.loading,
-.error {
-  text-align: center;
-  padding: 1rem;
-  margin: 1rem 0;
-}
+        &:last-child {
+          border-right: 1px solid var(--color-border);
+        }
+      }
+    }
+  }
 
-.error {
-  color: #d32f2f;
-  background-color: #ffebee;
-}
+  .loading, .error {
+    text-align: center;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+  }
 
-.weather-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+  .loading {
+    background-color: var(--color-background-soft);
+    color: var(--color-text);
+  }
 
-.weather-icon {
-  width: 40px;
-  height: 40px;
-}
-
-.weather-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-@media (max-width: 900px) {
-  .city-table th,
-  .city-table td {
-    padding: 0.5rem;
-    font-size: 0.9rem;
+  .error {
+    color: #d32f2f;
+    background-color: #ffebee;
   }
 }
 
-@media (max-width: 760px) {
+// Media queries
+@media (max-width: 900px) {
+  .city-table {
+    th, td {
+      padding: 0.5rem;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+@media (max-width: 990px) {
   .hide-medium {
     display: none;
   }
-  
-  .filter-controls {
-    flex-direction: column;
-  }
-  
-  .filter-group {
-    flex-wrap: wrap;
-  }
 }
 
-@media (max-width: 500px) {
+@media (max-width: 640px) {
   .hide-on-mobile {
     display: none;
   }
   
-  .city-table th,
-  .city-table td {
-    font-size: 1rem;
+  .city-table {
+    th, td {
+      font-size: 0.875rem;
+    }
   }
 }
-</style> 
+</style>

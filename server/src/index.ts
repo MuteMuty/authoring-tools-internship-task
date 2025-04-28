@@ -1,7 +1,8 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import { City, ParsedCity, CityQueryParams } from './types/city';
 
 const app = express();
 const port = 3000;
@@ -11,21 +12,21 @@ app.use(express.json());
 
 // Read cities data
 const citiesPath = path.join(__dirname, '../assets/cities.json');
-const citiesData = JSON.parse(fs.readFileSync(citiesPath, 'utf-8'));
+const citiesData: City[] = JSON.parse(fs.readFileSync(citiesPath, 'utf-8'));
 
 // Helper function to parse city coordinates
-const parseCityCoordinates = (city: any) => ({
+const parseCityCoordinates = (city: City): ParsedCity => ({
   ...city,
-  lat: parseFloat(city.lat),
-  lng: parseFloat(city.lng)
+  lat: parseFloat(city.lat.toString()),
+  lng: parseFloat(city.lng.toString())
 });
 
-// Endpoint to get all cities or filter by country
-app.get('/api/cities', (req, res) => {
+// Endpoint to get all cities or get first city by country if country is provided (used for county code of the geolocation country)
+app.get('/api/cities', (req: Request<{}, {}, {}, CityQueryParams>, res: Response<ParsedCity[]>) => {
   const { country } = req.query;
   
   if (country) {
-    const cityWithCountry = citiesData.find((city: any) => city.country === country);
+    const cityWithCountry = citiesData.find((city: City) => city.country === country);
     if (cityWithCountry) {
       res.json([parseCityCoordinates(cityWithCountry)]);
     } else {
@@ -38,9 +39,9 @@ app.get('/api/cities', (req, res) => {
 });
 
 // Endpoint to get random cities (25 unique countries)
-app.get('/api/random-cities', (req, res) => {
-  const countries = new Set();
-  const selectedCities = [];
+app.get('/api/random-cities', (req: Request, res: Response<ParsedCity[]>) => {
+  const countries = new Set<string>();
+  const selectedCities: ParsedCity[] = [];
   
   while (selectedCities.length < 25 && countries.size < citiesData.length) {
     const randomIndex = Math.floor(Math.random() * citiesData.length);

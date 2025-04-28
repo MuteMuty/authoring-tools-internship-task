@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@vueuse/core": "^13.1.0",
-    "cors": "^2.8.5"
-  }
-}

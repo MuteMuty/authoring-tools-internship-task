@@ -3,21 +3,28 @@ import { ref } from 'vue';
 import { useFetch, useAsyncState } from '@vueuse/core';
 import { config } from '@/config';
 import type { City } from '@/types/city';
-import { useDistance } from '@/composables/useDistance';
+import type { LocationData, WeatherData, GeocodingResponse, WeatherResponse } from '@/types/location';
+import { calculateDistance, calculateDistanceAI } from '@/utils/distance';
 
 export const useCityStore = defineStore('city', () => {
   const cities = ref<City[]>([]);
   const selectedCity = ref<City | null>(null);
   const loading = ref(false);
   const error = ref<string | null>(null);
-  const { calculateDistance, calculateDistanceAI } = useDistance();
 
-  const getWeatherData = async (city: City) => {
-    const { data, error } = await useFetch(
-      `${config.openWeather.baseUrl}${config.openWeather.endpoints.weather}?lat=${city.lat}&lon=${city.lng}&appid=${config.openWeather.apiKey}&units=metric`
+  const getWeatherData = async (lat: number, lng: number): Promise<WeatherData | null> => {
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lon: lng.toString(),
+      appid: config.openWeather.apiKey,
+      units: 'metric'
+    });
+
+    const { data, error } = await useFetch<WeatherResponse>(
+      `${config.openWeather.baseUrl}${config.openWeather.endpoints.weather}?${params}`
     ).json();
 
-    if (error.value) {
+    if (error.value || !data.value?.weather?.[0]) {
       console.error('Failed to fetch weather data:', error.value);
       return null;
     }
@@ -30,9 +37,16 @@ export const useCityStore = defineStore('city', () => {
     };
   };
 
-  const getLocationName = async (lat: number, lng: number) => {
-    const { data: locationData, error: locationError } = await useFetch(
-      `${config.openWeather.baseUrl}${config.openWeather.endpoints.geocoding}?lat=${lat}&lon=${lng}&limit=1&appid=${config.openWeather.apiKey}`
+  const getLocationName = async (lat: number, lng: number): Promise<LocationData | null> => {
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lon: lng.toString(),
+      limit: '1',
+      appid: config.openWeather.apiKey
+    });
+
+    const { data: locationData, error: locationError } = await useFetch<GeocodingResponse[]>(
+      `${config.openWeather.baseUrl}${config.openWeather.endpoints.geocoding}?${params}`
     ).json();
 
     if (locationError.value || !locationData.value?.[0]) {
@@ -42,8 +56,12 @@ export const useCityStore = defineStore('city', () => {
 
     const location = locationData.value[0];
     
-    const { data: countryData, error: countryError } = await useFetch(
-      `${config.api.baseUrl}${config.api.endpoints.cities}?country=${location.country}`
+    const countryParams = new URLSearchParams({
+      country: location.country
+    });
+
+    const { data: countryData, error: countryError } = await useFetch<City[]>(
+      `${config.api.baseUrl}${config.api.endpoints.cities}?${countryParams}`
     ).json();
 
     if (countryError.value) {
@@ -64,7 +82,7 @@ export const useCityStore = defineStore('city', () => {
     loading.value = true;
     error.value = null;
 
-    const { data, error: fetchError } = await useFetch(
+    const { data, error: fetchError } = await useFetch<City[]>(
       `${config.api.baseUrl}${config.api.endpoints.randomCities}`
     ).json();
 
@@ -77,7 +95,7 @@ export const useCityStore = defineStore('city', () => {
 
     const citiesWithWeather = await Promise.all(
       data.value.map(async (city: City) => {
-        const weather = await getWeatherData(city);
+        const weather = await getWeatherData(city.lat, city.lng);
         return { ...city, weather };
       })
     );
@@ -119,8 +137,11 @@ export const useCityStore = defineStore('city', () => {
   };
 
   const setUserLocation = async (lat: number, lng: number) => {
-    const locationInfo = await getLocationName(lat, lng);
-    const weatherData = await getWeatherData({ lat, lng } as City);
+    const [locationInfo, weatherData] = await Promise.all([
+      getLocationName(lat, lng),
+      getWeatherData(lat, lng)
+    ]);
+
     const location: City = {
       name: locationInfo?.name || 'Your Location',
       country: locationInfo?.country || 'CURRENT',
